@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quote Requests — Demo</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="wrap">
+    <h1>Quote Request Log</h1>
+    <p class="sub">Frontend (this page) → Backend (Express API) → Database (SQLite). Submit below and it's saved for real.</p>
+
+    <form id="requestForm">
+      <input type="text" id="name" placeholder="Name" required>
+      <input type="tel" id="phone" placeholder="Phone" required>
+      <input type="text" id="message" placeholder="What do you need? (optional)">
+      <button type="submit">Submit request</button>
+    </form>
+
+    <div id="status"></div>
+
+    <h2>Saved requests</h2>
+    <ul id="list"></ul>
+  </div>
+
+<script>
+  const form = document.getElementById('requestForm');
+  const list = document.getElementById('list');
+  const status = document.getElementById('status');
+
+  // Fetch all requests from the backend and render them
+  async function loadRequests() {
+    const res = await fetch('/api/requests');
+    const rows = await res.json();
+    list.innerHTML = rows.map(r => `
+      <li>
+        <strong>${r.name}</strong> — ${r.phone}
+        ${r.message ? `<br><span class="msg">${r.message}</span>` : ''}
+        <br><small>${r.created_at}</small>
+        <button data-id="${r.id}" class="del">Remove</button>
+      </li>
+    `).join('');
+  }
+
+  // Submit form → POST to backend → refresh list
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('name').value;
+    const phone = document.getElementById('phone').value;
+    const message = document.getElementById('message').value;
+
+    const res = await fetch('/api/requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, phone, message })
+    });
+
+    if (res.ok) {
+      status.textContent = 'Saved.';
+      form.reset();
+      loadRequests();
+    } else {
+      status.textContent = 'Something went wrong.';
+    }
+  });
+
+  // Delete button (event delegation)
+  list.addEventListener('click', async (e) => {
+    if (e.target.classList.contains('del')) {
+      await fetch('/api/requests/' + e.target.dataset.id, { method: 'DELETE' });
+      loadRequests();
+    }
+  });
+
+  loadRequests();
+</script>
+</body>
+</html>
